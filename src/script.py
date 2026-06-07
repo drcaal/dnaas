@@ -19,15 +19,14 @@ DUNGEON_TARGETS = {
     "角色经验": {"50":5},
     "角色材料": {"10":1, "30":3, "60":6},
     "武器突破": {"60":5, "70":6},
-    "皎皎币":   {"50":2, "60":3,"70":4},
-    "夜航手册": {"30":2, "40":3,"50":4,"55":5, "60":6,"65":7,"70":8,"80":8},
+    "皎皎币":   {"50":2,"50":2, "60":3,"70":4},
+    "夜航手册": {"30":2, "40":3,"50":4,"55":5, "60":6,"65":7,"70":8,"75":7,"80":8},
     "魔之楔": {"40":1, "60": 2, "80":3, "100":4},
     "mod强化": {"60":4, "80":6},
-    "开密函": {"驱离":0, "探险无尽":0, "半自动无巧手":0},
     "钓鱼": {"悠闲":0},
     "迷津": {"默认难度":0},
     "狩月人": {"110":0},
-    # "测试": {"测试":0}
+    "测试": {"测试":0}
     }
 DUNGEON_EXTRA = ["无关心","1","2","3","4","5","6","7","8","9"]
 DUNGEON_TOTAL = {"30":4, "40":5,"50":4,"55":6, "60":8,"65":9,"70":6,"80":5}
@@ -54,25 +53,30 @@ ACTION_MAP = {
 ####################################
 CONFIG_VAR_LIST = [
             #var_name,                      type,          config_name,                  default_value
-            ["farm_type_var",               tk.StringVar,  "_FARM_TYPE",                 "皎皎币"],
-            ["farm_lvl_var",                tk.StringVar,  "_FARM_LVL",                  "60"],
-            ["farm_extra_var",              tk.StringVar,  "_FARM_EXTRA",                "无关心"],
-            ["emu_path_var",                tk.StringVar,  "_EMUPATH",                   ""],
-            ["adb_port_var",                tk.StringVar,  "_ADBPORT",                   16384],
-            ["last_version",                tk.StringVar,  "LAST_VERSION",               ""],
-            ["latest_version",              tk.StringVar,  "LATEST_VERSION",             None],
-
-            ["cast_e_var",                  tk.BooleanVar, "_CAST_E_ABILITY",            True],
-            ["cast_intervel_var",           tk.IntVar,     "_CAST_E_INTERVAL",           7],
-            ["restart_intervel_var",        tk.IntVar,     "_RESTART_INTERVAL",          2000],
-            ["green_book_var",              tk.BooleanVar, "_GREEN_BOOK",                False],
-            ["green_book_final_var",        tk.BooleanVar, "_GREEN_BOOK_FINAL",          False],
-            ["round_custom_var",            tk.BooleanVar, "_ROUND_CUSTOM_ACTIVE",       False],
-            ["round_custom_time_var",       tk.IntVar,     "_ROUND_CUSTOM_TIME",         3],
-            ["cast_q_var",                  tk.BooleanVar, "_CAST_Q_ABILITY",            False],
-            ["cast_Q_intervel_var",         tk.IntVar,     "_CAST_Q_INTERVAL",           25],
-            ["cast_e_print_var",            tk.BooleanVar, "_CAST_E_PRINT",              False],
-            ["cast_Q_once_var",             tk.BooleanVar, "_CAST_Q_ONCE",              False]
+            ["farm_type_var",               tk.StringVar,  "_FARM_TYPE",                  "皎皎币"],
+            ["farm_lvl_var",                tk.StringVar,  "_FARM_LVL",                   "60"],
+            ["farm_extra_var",              tk.StringVar,  "_FARM_EXTRA",                 "无关心"],
+            ["emu_path_var",                tk.StringVar,  "_EMUPATH",                    ""],
+            ["adb_port_var",                tk.StringVar,  "_ADBPORT",                    16384],
+            ["EMU_INDEX",                   tk.StringVar,  "_EMUINDEX",                   0],
+            ["last_version",                tk.StringVar,  "LAST_VERSION",                ""],
+            ["latest_version",              tk.StringVar,  "LATEST_VERSION",              None],
+            ["low_fps_var",                 tk.BooleanVar, "_LOW_FPS",                    False],
+            ["cast_e_var",                  tk.BooleanVar, "_CAST_E_ABILITY",             True],
+            ["cast_intervel_var",           tk.IntVar,     "_CAST_E_INTERVAL",            7],
+            ["restart_intervel_var",        tk.IntVar,     "_RESTART_INTERVAL",           2000],
+            ["green_book_var",              tk.BooleanVar, "_GREEN_BOOK",                 False],
+            ["green_book_final_var",        tk.BooleanVar, "_GREEN_BOOK_FINAL",           False],
+            ["round_custom_var",            tk.BooleanVar, "_ROUND_CUSTOM_ACTIVE",        False],
+            ["round_custom_time_var",       tk.IntVar,     "_ROUND_CUSTOM_TIME",          3],
+            ["cast_q_var",                  tk.BooleanVar, "_CAST_Q_ABILITY",             False],
+            ["cast_Q_intervel_var",         tk.IntVar,     "_CAST_Q_INTERVAL",            25],
+            ["cast_e_print_var",            tk.BooleanVar, "_CAST_E_PRINT",               False],
+            ["cast_Q_once_var",             tk.BooleanVar, "_CAST_Q_ONCE",                False],
+            ["auto_letter_check_time",      tk.StringVar,  "_AUTO_LETTER_TYPE_CHECK_TIME",False],
+            ["auto_letter_char",            tk.BooleanVar, "_AUTO_LETTER_CHAR",           False],
+            ["auto_letter_weapeon",         tk.BooleanVar, "_AUTO_LETTER_WEAPEON",        False],
+            ["auto_letter_mod",             tk.BooleanVar, "_AUTO_LETTER_MOD",            False],
             ]
 
 class FarmConfig:
@@ -105,6 +109,12 @@ class RuntimeContext:
     _CASTED_Q = False
     _GAME_PREPARE = False
     _CRASHCOUNTER = 0
+    #### 自动密函
+    _LETTER_HOUR = False
+    _AUTO_LETTER_INFO = ""
+    _AUTO_LETTER_GAME_COUNTER = 0
+    _GAME_END_INFO = ""
+    _AUTO_LETTER_TYPE_CHECK_TIME = ""
 class FarmQuest:
     _DUNGWAITTIMEOUT = 0
     _TARGETINFOLIST = None
@@ -201,8 +211,13 @@ def StartEmulator(setting):
 
     try:
         logger.info(f"启动模拟器: {hd_player_path}")
+        if setting._EMUINDEX != 0:
+            if "MuMu" in hd_player_path:
+                cmd = ("\"{hd}\" control -v {a}").format(hd=hd_player_path, a=setting._EMUINDEX)
+            else:
+                 logger.error("指定模拟器编号暂时不支持蓝叠.")
         subprocess.Popen(
-            hd_player_path,
+            cmd,
             shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -868,7 +883,7 @@ def Factory():
         if time <= SPLIT:
             DeviceShell(f"input swipe 150 550 560 550 {int(1.02*time)}")
         else:
-            DeviceShell(f"input swipe 150 550 560 550 {int(1.02*SPLIT)}")
+            DeviceShell(f"input swipe 1150 550 560 550 {int(1.02*SPLIT)}")
             Sleep(1)
             GoRight(time-SPLIT)
         Sleep(0.1)
@@ -877,9 +892,9 @@ def Factory():
         # logger.info(f"往前走 剩余{time}")
         SPLIT = 3000
         if time <= SPLIT:
-            DeviceShell(f"input swipe 500 610 500 400 {int(time*21/20)}")
+            DeviceShell(f"input swipe 500 710 500 500 {int(time*21/20)}")
         else:
-            DeviceShell(f"input swipe 500 610 500 400 {int(SPLIT*21/20)}")
+            DeviceShell(f"input swipe 500 710 500 500 {int(SPLIT*21/20)}")
             Sleep(1)
             GoForward(time-SPLIT)
         Sleep(0.1)
@@ -1045,6 +1060,11 @@ def Factory():
                 Press([1097,658])
                 CastSpell.last_nothing_time = time.time()
 
+    def CastRope():
+        for _ in range(5):
+            Press([1243,368])
+            Sleep(0.1)
+        Sleep(4)
     def CastSpearRush(time, attack = False):
         for _ in range(time):
             DeviceShell("input swipe 1336 630 1336 630 500")
@@ -1104,10 +1124,10 @@ def Factory():
                 return False
             if abs(pos[0]-800) <= 10:
                 return True
-            DeviceShell(f"input swipe 1200 225 {round((pos[0]-800)/3.5+1200)} 225")
+            DeviceShell(f"input swipe 1200 225 {round((pos[0]-800)/(3.5*setting._FPS_ADJUSTER)+1200)} 225")
             Sleep(0.5)
         return False
-    def AUTOCalibration_P(tar_p, tar_s = None, roi = None):
+    def AUTOCalibration_P(tar_p=[800,450], tar_s = None, roi = None):
         """
         进行自动校准. P代表校准到一个特定的位置(p).
         tar_p: 目标符号想要前往的像素坐标.
@@ -1129,24 +1149,53 @@ def Factory():
                 pos = CheckIf(scn,tar_s,roi)
             if pos:
                 delta = [round((pos[0]-tar_p[0])), round((pos[1]-tar_p[1]))]
-                if (abs(delta[0]) <= 5) and (abs(delta[1]) <= 5):
+                if (abs(delta[0]) <= 3+setting._FPS_ADJUSTER*2) and (abs(delta[1]) <= 3+setting._FPS_ADJUSTER*2):
                     return True
-                delta[0] = int(delta[0]/1.4)
+                delta[0] = int(delta[0]/2)
                 delta[1] = int(delta[1]/2)
-                DeviceShell(f"input swipe 1200 225 {delta[0]+1200} {delta[1]+225}")
+                logger.debug(f"自动校正 目标{pos} 移动{delta[0]//setting._FPS_ADJUSTER} {delta[1]//setting._FPS_ADJUSTER}")
+                DeviceShell(f"input swipe 1200 225 {delta[0]//setting._FPS_ADJUSTER+1200} {delta[1]//setting._FPS_ADJUSTER+225} {1500*setting._FPS_ADJUSTER-1000}")
                 Sleep(0.5)
         return False
     ##################################################################
+    def goAndCheckLetter():
+        letter = False
+        if setting._AUTO_LETTER_CHAR or setting._AUTO_LETTER_WEAPEON or setting._AUTO_LETTER_MOD:
+            FindCoordsOrElseExecuteFallbackAndWait("委托密函_概率说明","委托密函",1)
+            if setting._AUTO_LETTER_CHAR and Press(CheckIf(ScreenShot(),"委托密函_驱离",[[547,532,100,250]])):
+                letter =  True
+            elif setting._AUTO_LETTER_WEAPEON and Press(CheckIf(ScreenShot(),"委托密函_驱离",[[892,528,100,250]])):
+                letter =  True
+            elif setting._AUTO_LETTER_MOD and Press(CheckIf(ScreenShot(),"委托密函_驱离",[[1239,529,100,250]])):
+                letter =  True
+        if letter:
+            Sleep(2)
+            Press(CheckIf(ScreenShot(),"选择密函(开始)"))
+            return True
+        return False
     def BasicQuestSelect():
-        if setting._FARM_TYPE == "开密函":
-            logger.info("错误: 开密函模式无法自动选择任务. 取消执行.")
-            setting._FORCESTOPING.set()
-            return
-        elif setting._FARM_TYPE == "迷津":
+        currentHour = datetime.now().strftime('%Y-%m-%d-%H')
+        if (runtimeContext._AUTO_LETTER_TYPE_CHECK_TIME != currentHour): # 如果是一个新的小时, 那么进行检查
+            runtimeContext._AUTO_LETTER_TYPE_CHECK_TIME = currentHour # 记录检查时间
+            runtimeContext._LETTER_HOUR = False # 重置为否
+            if goAndCheckLetter():
+                runtimeContext._LETTER_HOUR = True
+                return
+        
+        if runtimeContext._LETTER_HOUR: # 如果因为其他理由来到了这里
+            if goAndCheckLetter():
+                return
+            else:
+                runtimeContext._LETTER_HOUR = False
+                
+
+        if setting._FARM_TYPE == "迷津":
             FindCoordsOrElseExecuteFallbackAndWait("迷津",[88,407],1)
             FindCoordsOrElseExecuteFallbackAndWait("肉鸽_堕入深渊","肉鸽_前往",1)
             Press(FindCoordsOrElseExecuteFallbackAndWait("肉鸽_开始探索", ["肉鸽_堕入深渊","确定","肉鸽_关闭结算", "肉鸽_结束探索"],1))
         elif setting._FARM_TYPE != "夜航手册":
+            Press(CheckIf(ScreenShot(),"xx委托xx"))
+            Sleep(1)
             FindCoordsOrElseExecuteFallbackAndWait(setting._FARM_TYPE,"input swipe 1400 400 1300 400",1)
             FindCoordsOrElseExecuteFallbackAndWait("开始挑战",setting._FARM_TYPE,2)
             roi = [50,182+57*(DUNGEON_TARGETS[setting._FARM_TYPE][setting._FARM_LVL]-1),275,57]
@@ -1168,7 +1217,7 @@ def Factory():
             FindCoordsOrElseExecuteFallbackAndWait("前往","夜航手册",1)
             lv = DUNGEON_TARGETS[setting._FARM_TYPE][setting._FARM_LVL]
             lvl = setting._FARM_LVL
-            if setting._FARM_LVL != '80':
+            if setting._FARM_LVL not in ["75","80"]:
                 DeviceShell("input swipe 562 210 562 714")
                 Sleep(2)
             Press([562,210+(lv-1)*84])
@@ -1183,6 +1232,10 @@ def Factory():
         if try_diy_action(setting._FARM_TYPE, setting._FARM_LVL, setting._FARM_EXTRA):
             return True
         
+        if runtimeContext._LETTER_HOUR:
+            if not ResetPosition():
+                return False
+            return True
         match setting._FARM_TYPE+setting._FARM_LVL:
             case "狩月人110":
                 SJump()
@@ -1205,8 +1258,13 @@ def Factory():
                 # GoBack(1000)
                 # GoLeft(100)
                 return True
-            case "开密函驱离":
-                ResetPosition()
+            case "皎皎币50":
+                AUTOCalibration_P()
+                CastSpearRush(4)
+                AUTOCalibration_P()
+                CastSpearRush(1)
+                AUTOCalibration_P()
+                CastSpearRush(1)
                 return True
             case "皎皎币60":
                 if not ResetPosition():
@@ -1276,10 +1334,12 @@ def Factory():
                 GoBack(1000)
                 GoLeft(6000)
                 GoForward(11300)
-                GoLeft(6000)
-                DoubleJump()
-                GoLeft(3000)
-                GoLeft(14000)
+                DeviceShell(f"input swipe 800 225 {(800-728/setting._FPS_ADJUSTER)} 225 500")
+                AUTOCalibration_P([800,600])
+                CastSpearRush(4)
+                AUTOCalibration_P()
+                GoForward(6000)
+
                 if not ResetPosition():
                     return False
                 return True
@@ -1350,6 +1410,38 @@ def Factory():
                 #         return True
                 #     return False
                 return False
+            case "夜航手册80":
+                if (setting._FARM_EXTRA == "无关心") or (int(setting._FARM_EXTRA) not in [1,2,3,4,5]) :
+                    logger.info("暂不支持的mod额外参数. 当前仅支持1,2,3,4.")
+                    return False
+                if int(setting._FARM_EXTRA) == 1:
+                    return True
+                if int(setting._FARM_EXTRA) == 2:
+                    return True
+                if int(setting._FARM_EXTRA) == 3:
+                    GoForward(14000)
+                    return True
+                if int(setting._FARM_EXTRA) == 4:
+                    AUTOCalibration_P([800,450])
+                    GoForward(15000)
+                    return True
+            case "夜航手册75":
+                if (setting._FARM_EXTRA == "无关心") or (int(setting._FARM_EXTRA) not in [1,2,3,4,5]) :
+                    logger.info("暂不支持的mod额外参数. 当前仅支持1,2,3,4,5.")
+                    return False
+                if int(setting._FARM_EXTRA) == 1:
+                    return True
+                if int(setting._FARM_EXTRA) == 2:
+                    GoForward(7000)
+                    return True
+                if int(setting._FARM_EXTRA) == 3:
+                    return True
+                if int(setting._FARM_EXTRA) == 4:
+                    CastSpearRush(4)
+                    return True
+                if int(setting._FARM_EXTRA) == 5:
+                    AUTOCalibration_P([800,450])
+                    GoForward(15000)
             case "角色经验50":
                 if CheckIf(ScreenShot(), "保护目标", [[693,212,109,110]]):
                     GoForward(9600)
@@ -1390,7 +1482,7 @@ def Factory():
                         GoLeft(200)
                         return True
                 return False
-            case "角色材料10" | "开密函探险无尽":
+            case "角色材料10":
                 if not ResetPosition():
                     return False
                 Sleep(3)
@@ -1420,6 +1512,7 @@ def Factory():
                     return True
                 return False
             case "武器突破60" | "武器突破70":
+                Sleep(2)
                 GoRight(round((2+(56-32)/60)*1000))
                 GoForward(round((42-25+34/60)*1000))
                 GoLeft(round((2+22/60)*1000))
@@ -1470,7 +1563,7 @@ def Factory():
                                 GoRight(round((9-14/60)*1000))
                                 continue
                             if k == 'B':
-                                GoForward(1000)
+                                GoForward(1300)
                                 GoRight(round((14-56/60)*1000))
                                 GoForward(round((6+24/60)*1000))
                                 GoLeft(round((4-54/60)*1000))
@@ -1500,7 +1593,7 @@ def Factory():
                     ResetPosition()
                     if not CheckIf(ScreenShot(), "操作_营救"):
                         return
-                    DeviceShell("input swipe 800 225 1083 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1083-800)//setting._FPS_ADJUSTER+800} 225 500")
                     if not AUTOCalibration_P([983,450], "操作_营救"):
                         return False
                     GoForward(5000)
@@ -1513,10 +1606,10 @@ def Factory():
                     if not TryQuickUnlock(5, GoForward, 100):
                         pass
                     
-                    DeviceShell("input swipe 800 225 750 225 500")
+                    DeviceShell(f"input swipe 800 225 {(750-800)//setting._FPS_ADJUSTER+800} 225 500")
                     AUTOCalibration_P([736,389],None,[[575,335,264,443]])
                     GoForward(9000)
-                    DeviceShell("input swipe 800 225 1300 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1300-800)//setting._FPS_ADJUSTER+800} 225 500")
                     AUTOCalibration_P([800,450],None,[[597,213,344,380]])
                     GoForward(2000)
                     if not TryQuickUnlock(5, GoForward, 100):
@@ -1524,7 +1617,7 @@ def Factory():
                     Sleep(2)
                     if CheckIf(ScreenShot(),"护送目标前往撤离点"):
                         logger.info("人质已救出!")
-                        DeviceShell(f"input swipe 800 225 {1600-1528} 225 500")
+                        DeviceShell(f"input swipe 800 225 {(800-728/setting._FPS_ADJUSTER)} 225 500")
                         if not AUTOCalibration_P([865,450]):
                             return False
                         GoForward(5500)
@@ -1535,9 +1628,9 @@ def Factory():
                         Sleep(1)
                         return finalRoom()
 
-                    DeviceShell("input swipe 800 225 1528 225 500")
-                    DeviceShell("input swipe 800 225 1528 225 500")
-                    DeviceShell("input swipe 800 225 1100 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1528-800)//setting._FPS_ADJUSTER+800} 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1528-800)//setting._FPS_ADJUSTER+800} 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1100-800)//setting._FPS_ADJUSTER+800} 225 500")
                     if not AUTOCalibration_P([800,450], None,[[567,226,317,409]]):
                         return False
                     GoForward(7000)
@@ -1545,7 +1638,7 @@ def Factory():
                         pass
                     if CheckIf(ScreenShot(),"护送目标前往撤离点"):
                         logger.info("人质已救出!")
-                        DeviceShell("input swipe 800 225 1528 225 500")
+                        DeviceShell(f"input swipe 800 225 {(1528-800)//setting._FPS_ADJUSTER+800} 225 500")
                         GoRight(2000)
                         if not AUTOCalibration_P([800,500]):
                             return False
@@ -1554,11 +1647,11 @@ def Factory():
                         return finalRoom()
 
                     GoBack(7000)
-                    DeviceShell("input swipe 800 225 1200 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1200-800)//setting._FPS_ADJUSTER+800} 225 500")
                     if not AUTOCalibration_P([985,440], None,[[640,241,660,450]]):
                         return False
                     GoForward(7000)
-                    DeviceShell("input swipe 800 225 1190 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1190-800)//setting._FPS_ADJUSTER+800} 225 500")
                     if not AUTOCalibration_P([800,450], None,[[640,241,437,450]]):
                         return False
                     GoForward(2500)
@@ -1577,7 +1670,7 @@ def Factory():
                     
                     logger.info("第四个房间")
                     if setting._FARM_TYPE+setting._FARM_LVL == "mod强化60(测试)":
-                        DeviceShell("input swipe 1528 225 600 225 500")
+                        DeviceShell(f"input swipe {(1528-800)//setting._FPS_ADJUSTER+800} 225 600 225 500")
                         AUTOCalibration_P([800,450])
                         GoLeft(2300)
                         GoForward(2000)
@@ -1586,7 +1679,7 @@ def Factory():
                         AUTOCalibration_P([800,595])
                         CastSpearRush(2,True)
                         GoBack(500)
-                        DeviceShell("input swipe 1528 225 800 225 500")
+                        DeviceShell(f"input swipe {(1528-800)//setting._FPS_ADJUSTER+800} 225 800 225 500")
                         AUTOCalibration_P([730,450])
                         if not TryQuickUnlock(5, GoForward, 100):
                             pass
@@ -1641,7 +1734,7 @@ def Factory():
                     CastSpearRush(2)
                     return saveVIP()
                 elif CheckIf(scn,"保护目标", [[1095-50,431-50,100,100]]):
-                    DeviceShell("input swipe 800 225 1107 225 500")
+                    DeviceShell(f"input swipe 800 225 {(1107-800)//2+800} 225 500")
                     if CheckIf(ScreenShot(),"保护目标",[[620-50,431-50,100,100]]):
                         logger.info("左上")
                         if not AUTOCalibration_P([723,595]):
@@ -1891,12 +1984,6 @@ def Factory():
                 logger.info("不对, 你怎么能运行这个??")
                 return True
             case "测试测试":
-                
-                GoForward(11300)
-                GoLeft(500)
-                GoLeft(500)
-                GoLeft(500)
-                GoLeft(500)
                              
                 return True
             case _ :
@@ -1910,6 +1997,11 @@ def Factory():
         runtimeContext._IN_GAME_COUNTER = 1
         runtimeContext._GAME_COUNTER = 0
         runtimeContext._GAME_PREPARE = False
+
+        if setting._LOW_FPS:
+            setting._FPS_ADJUSTER = 2
+        else:
+            setting._FPS_ADJUSTER = 1
 
         if (setting._FARM_TYPE not in DUNGEON_TARGETS.keys()) or (setting._FARM_LVL not in DUNGEON_TARGETS[setting._FARM_TYPE].keys()):
             logger.info("\n\n任务列表已更新! 请重新手动选择地下城任务!\n\n")
@@ -1925,7 +2017,7 @@ def Factory():
                     DEFAULTWAVE = 3
                 case "角色材料10":
                     DEFAULTWAVE = 15
-                case "角色材料30" | "角色材料60" | "开密函探险无尽" | "开密函半自动无巧手":
+                case "角色材料30" | "角色材料60":
                     DEFAULTWAVE = 15
                 case _:
                     DEFAULTWAVE = 1
@@ -2057,14 +2149,26 @@ def Factory():
             return False
         @register('normal')
         def handle_confirm_and_select_letter(scn):
-            if (find_nuts:=CheckIf(scn, "选择密函")) or (CheckIf(scn, "确认选择")):
-                if find_nuts:
-                    Press([889,458])
-                    Sleep(0.2)
-                    Press([889,458])
-                    Sleep(0.2)
+            if pos:=CheckIf(scn, "选择密函(开始)",[[800,450,800,450]]):
+                Press(pos)
+                return True
+            if CheckIf(scn, "选择密函"):
+                Press([810,437])
+                Sleep(0.2)
+                Press([810,437])
+                Sleep(0.2)
+            if CheckIf(scn:=ScreenShot(), "确认选择"):
                 Press(CheckIf(scn,"确认选择"))
                 return True
+            elif CheckIf(scn,"购买"):
+                runtimeContext._LETTER_HOUR = False
+                logger.info("已经开完所有密函")
+                Press(CheckIf(scn,"放弃"))
+                Sleep(1)
+                PressReturn()
+                Sleep(0.5)
+                PressReturn()
+                return False
             return False
         @register()
         def handle_rez(scn):
@@ -2079,6 +2183,10 @@ def Factory():
                 if Press(CheckIf(scn,"小月卡")):
                     logger.info("已领取小月卡.")
                     return True
+            if CheckIf(scn,"每日签到"):
+                Press([1405,188])
+                logger.info("已领取每日签到.")
+                return True
             return False
         @register('normal')
         def handle_countinue_in_game(scn):
@@ -2110,16 +2218,30 @@ def Factory():
         def handle_continue(scn):
             nonlocal runtimeContext
             if (pos := CheckIf(scn, "再次进行")) or (pos := CheckIf(scn, "重新开始")):
-                Press(pos)
+                ###### 接下来干嘛
+                if (runtimeContext._AUTO_LETTER_TYPE_CHECK_TIME != datetime.now().strftime('%Y-%m-%d-%H')) and (setting._AUTO_LETTER_CHAR or setting._AUTO_LETTER_WEAPEON or setting._AUTO_LETTER_MOD):
+                    PressReturn()
+                else:
+                    Press(pos)
+
+                ######
                 runtimeContext._CASTED_Q = False
                 cost_time = time.time()-runtimeContext._START_TIME
                 if cost_time > 10:
-                    runtimeContext._GAME_COUNTER += 1
-                    runtimeContext._GAME_PREPARE = False
                     runtimeContext._TOTAL_TIME = runtimeContext._TOTAL_TIME + cost_time
+                    runtimeContext._GAME_PREPARE = False
                     # logger.info(f"本轮用时{cost_time:.2f}秒.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒.")
                     logger.info(f"本轮用时{cost_time:.2f}秒.")
-                    logger.info(f"第{runtimeContext._GAME_COUNTER}次{setting._FARM_TYPE+setting._FARM_LVL}完成.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒.", extra={"summary": True})
+
+                    if runtimeContext._LETTER_HOUR:
+                        runtimeContext._AUTO_LETTER_GAME_COUNTER += 1
+                        runtimeContext._AUTO_LETTER_INFO = f"已完成{runtimeContext._AUTO_LETTER_GAME_COUNTER}次自动密函驱离."
+                    else:
+                        runtimeContext._GAME_COUNTER += 1
+                        runtimeContext._GAME_END_INFO = f"已完成{runtimeContext._GAME_COUNTER}次{setting._FARM_TYPE+setting._FARM_LVL}.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒."
+                    
+                    logger.info(f"{runtimeContext._AUTO_LETTER_INFO }\n{runtimeContext._GAME_END_INFO}", extra={"summary": True})
+
                     runtimeContext._START_TIME = time.time()
                 return True
             return False
@@ -2200,7 +2322,7 @@ def Factory():
                 if runtimeContext._ROUGE_tick_counter % 7 == 0:
                     Press([1097,658])
                     DeviceShell(f"input swipe 1200 0 1200 800 500")
-                    DeviceShell(f"input swipe 1200 450 1200 200 500")
+                    DeviceShell(f"input swipe 1200 450 1200 {450-250//setting._FPS_ADJUSTER} 500")
                 if runtimeContext._ROUGE_tick_counter % 3 == 0:
                     Press([1086,797])
                 else:

@@ -153,10 +153,63 @@ class ConfigPanelApp(tk.Toplevel):
             )
         self.button_save_adb_port.grid(row=0, column=4)
 
+        row_counter += 1
+        frame_row = ttk.Frame(self.main_frame)
+        frame_row.grid(row=row_counter, column=0, sticky="ew", pady=2)
+        ttk.Label(frame_row, text=("模拟器编号:")).grid(row=0, column=0, sticky=tk.W, pady=5)
+        vcmd_non_neg = self.register(lambda x: ((x=="")or(x.isdigit())))
+        self.emu_index_entry = ttk.Entry(frame_row, textvariable=self.EMU_INDEX, validate="key",
+                                         validatecommand=(vcmd_non_neg, '%P'), width=5)
+        self.emu_index_entry.grid(row=0, column=1)
+        self.button_save_emu_index = ttk.Button(frame_row, text=("保存"), command=self.save_config, width=5)
+        self.button_save_emu_index.grid(row=0, column=2)
+
+        row_counter += 1
+        self.low_fps_check = ttk.Checkbutton(
+            self.main_frame,
+            variable=self.low_fps_var,
+            text="兼容模式: 30帧",
+            command=checkcommand,
+            style="Custom.TCheckbutton"
+            )
+        self.low_fps_check.grid(row=row_counter, column=0, sticky='ew')
+
         # 分割线.
         row_counter += 1
         ttk.Separator(self.main_frame, orient='horizontal').grid(row=row_counter, column=0, columnspan=3, sticky='ew', pady=10)
 
+        # 自动密函
+        row_counter += 1
+        frame_row = ttk.Frame(self.main_frame)
+        frame_row.grid(row=row_counter, column=0, sticky="ew", pady=5) 
+        ttk.Label(frame_row, text="自动密函驱离:").grid(row=0, column=0, sticky=tk.W, pady=5)
+
+        self.auto_letter_char_check = ttk.Checkbutton(
+            frame_row,
+            variable=self.auto_letter_char,
+            text="人物",
+            command=checkcommand,
+            style="Custom.TCheckbutton"
+            )
+        self.auto_letter_char_check.grid(row=0, column=1, sticky="ew", pady=5)
+
+        self.auto_letter_weapeon_check = ttk.Checkbutton(
+            frame_row,
+            variable=self.auto_letter_weapeon,
+            text="武器",
+            command=checkcommand,
+            style="Custom.TCheckbutton"
+            )
+        self.auto_letter_weapeon_check.grid(row=0, column=2, sticky="ew", pady=5)
+
+        self.auto_letter_mod_check = ttk.Checkbutton(
+            frame_row,
+            variable=self.auto_letter_mod,
+            text="MOD",
+            command=checkcommand,
+            style="Custom.TCheckbutton"
+            )
+        self.auto_letter_mod_check.grid(row=0, column=3, sticky="ew", pady=5)
         # 地下城目标
         def UpdateLvlCombo(*args):
             if self.farm_type_var.get() in DUNGEON_TARGETS.keys():
@@ -434,6 +487,7 @@ class ConfigPanelApp(tk.Toplevel):
     def set_controls_state(self, state):
         self.button_and_entry = [
             self.adb_path_change_button,
+            self.low_fps_check,
             self.adb_port_entry,
             self.button_save_adb_port,
             self.cast_E_check,
@@ -453,7 +507,10 @@ class ConfigPanelApp(tk.Toplevel):
             self.farm_target_extra_combo,
             self.farm_target_combo,
             self.farm_target_lvl_combo,
-            self.cast_Q_once_check
+            self.cast_Q_once_check,
+            self.auto_letter_char_check,
+            self.auto_letter_mod_check,
+            self.auto_letter_weapeon_check,
             ]
 
         if state == tk.DISABLED:
