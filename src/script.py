@@ -28,8 +28,8 @@ DUNGEON_TARGETS = {
     "狩月人": {"110":0},
     "测试": {"测试":0}
     }
-DUNGEON_EXTRA = ["无关心","1","2","3","4","5","6","7","8","9"]
-DUNGEON_TOTAL = {"30":4, "40":5,"50":4,"55":6, "60":8,"65":9,"70":6,"80":5}
+DUNGEON_EXTRA = ["无关心","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20"]
+DUNGEON_TOTAL = {"30":4, "40":5,"50":7,"55":6, "60":14,"65":9,"70":8,"75":13,"80":4}
 
 ACTION_MAP = {
     "左": "GoLeft",
@@ -841,23 +841,30 @@ def Factory():
         Sleep(4)
     def Skill():
         Press([1055,800])
-    def SJump():
-        Press([1350,450])
-    def Sprinting(twice=1):
+    def SJump(twice=1,time=1.5):
+        twice = int(twice)
+        for i in range(twice):
+            Press([1350,450])
+            Sleep(time)
+    def Sprinting(twice=1,attack = False):
         twice = int(twice)
         for i in range(twice):
             Press([1350, 650], long_press_time=275)
             if i != twice - 1:
                 Sleep(0.25)
+        if attack:
+            Press([1350,650])
+            Sleep(1)
     def Shoot():
         Press([1150,650], long_press_time=250)
-    def Liser_Sprinting():
+    def Liser_Sprinting(wait=1.5):
         Skill()
         Sleep(0.3)
         Sprinting()
         Sleep(0.05)
         Shoot()
-        Sleep(0.3)
+        Sleep(wait)
+        Press([1350, 650])
     def TRight():
         DeviceShell("input swipe 1050 400 1450 400 100")
         Sleep(0.1)
@@ -866,6 +873,9 @@ def Factory():
         DeviceShell("input swipe 1050 400 650 400 100")
         Sleep(0.1)
         DeviceShell("input swipe 1050 400 650 400 100")
+    def Zipline():
+        Press([1226,331])
+        Sleep(3)
     def GoLeft(time = 1000):
         # logger.info(f"往左走 剩余{time}")
         SPLIT = 3000
@@ -873,21 +883,23 @@ def Factory():
             DeviceShell(f"input swipe 360 550 50 550 {int(time*41/40)}")
         else:
             DeviceShell(f"input swipe 360 550 50 550 {int(SPLIT*41/40)}")
-            Sleep(1)
+            Sleep(0.1)
             GoLeft(time-SPLIT)
         Sleep(0.1)
         Press([262,767])
+        Sleep(0.2)
     def GoRight(time = 1000):
         # logger.info(f"往右走 剩余{time}")
         SPLIT = 3000
         if time <= SPLIT:
-            DeviceShell(f"input swipe 150 550 560 550 {int(1.02*time)}")
+            DeviceShell(f"input swipe 450 550 560 550 {int(1.02*time)}")
         else:
-            DeviceShell(f"input swipe 1150 550 560 550 {int(1.02*SPLIT)}")
-            Sleep(1)
+            DeviceShell(f"input swipe 450 550 560 550 {int(1.02*SPLIT)}")
+            Sleep(0.1)
             GoRight(time-SPLIT)
         Sleep(0.1)
         Press([262,767])
+        Sleep(0.2)
     def GoForward(time = 1000):
         # logger.info(f"往前走 剩余{time}")
         SPLIT = 3000
@@ -895,10 +907,11 @@ def Factory():
             DeviceShell(f"input swipe 500 710 500 500 {int(time*21/20)}")
         else:
             DeviceShell(f"input swipe 500 710 500 500 {int(SPLIT*21/20)}")
-            Sleep(1)
+            Sleep(0.1)
             GoForward(time-SPLIT)
         Sleep(0.1)
         Press([262,767])
+        Sleep(0.2)
     def GoBack(time = 1000):
         # logger.info(f"往后走 剩余{time}")
         SPLIT = 3000
@@ -906,10 +919,11 @@ def Factory():
             DeviceShell(f"input swipe 500 400 500 710 {int(time*31/30)}")
         else:
             DeviceShell(f"input swipe 500 400 500 710 {int(SPLIT*31/30)}")
-            Sleep(1)
+            Sleep(0.1)
             GoBack(time-SPLIT)
         Sleep(0.1)
         Press([262,767])
+        Sleep(0.2)
     def Dodge(time = 1):
         for _ in range(time):
             Press([1500,582])
@@ -1065,13 +1079,7 @@ def Factory():
             Press([1243,368])
             Sleep(0.1)
         Sleep(4)
-    def CastSpearRush(time, attack = False):
-        for _ in range(time):
-            DeviceShell("input swipe 1336 630 1336 630 500")
-            Sleep(0.4)
-        if attack:
-            Press([1336,630])
-            Sleep(1)
+
     def CheckIfInDungeon(scn = None):
         if scn is None:
             scn = ScreenShot()
@@ -1151,11 +1159,24 @@ def Factory():
                 delta = [round((pos[0]-tar_p[0])), round((pos[1]-tar_p[1]))]
                 if (abs(delta[0]) <= 3+setting._FPS_ADJUSTER*2) and (abs(delta[1]) <= 3+setting._FPS_ADJUSTER*2):
                     return True
-                delta[0] = int(delta[0]/2)
-                delta[1] = int(delta[1]/2)
+                # delta[0] = int(delta[0]/2)
+                # delta[1] = int(delta[1]/2)
+
+                distance = (delta[0]**2 + delta[1]**2) ** 0.5
+                if distance > 200:
+                    # 距离还很远时，胆子放大，挪 70% 的距离（除以 1.4）
+                    factor = 1.4
+                elif distance > 50:
+                    # 中等距离，挪 50%（就是原作者的除以 2）
+                    factor = 2.0
+                else:
+                    # 已经很近了，为了防止云游戏延迟滑过头，采用更保守的碎步挪（除以 2.5）
+                    factor = 2.5
+                delta[0] = int(delta[0] / factor)
+                delta[1] = int(delta[1] / factor)
                 logger.debug(f"自动校正 目标{pos} 移动{delta[0]//setting._FPS_ADJUSTER} {delta[1]//setting._FPS_ADJUSTER}")
                 DeviceShell(f"input swipe 1200 225 {delta[0]//setting._FPS_ADJUSTER+1200} {delta[1]//setting._FPS_ADJUSTER+225} {1500*setting._FPS_ADJUSTER-1000}")
-                Sleep(0.5)
+                Sleep(0.3)
         return False
     ##################################################################
     def goAndCheckLetter():
@@ -1238,33 +1259,22 @@ def Factory():
             return True
         match setting._FARM_TYPE+setting._FARM_LVL:
             case "狩月人110":
-                SJump()
-                Sleep(1.5)
-                SJump()
-                Sleep(1.5)
-                SJump()
-                Sleep(1)
-                SJump()
-                Sleep(1)
-                SJump()
-                Sleep(1)
+                SJump(2,1.5)
+                SJump(1,3)
                 GoForward(700)
                 Press([1481,776])
                 return True
             case "夜航手册40":
                 return True
             case "夜航手册55" | "夜航手册60":
-                # GoForward(15000)
-                # GoBack(1000)
-                # GoLeft(100)
                 return True
             case "皎皎币50":
                 AUTOCalibration_P()
-                CastSpearRush(4)
+                Sprinting(4)
                 AUTOCalibration_P()
-                CastSpearRush(1)
+                Sprinting(1)
                 AUTOCalibration_P()
-                CastSpearRush(1)
+                Sprinting(1)
                 return True
             case "皎皎币60":
                 if not ResetPosition():
@@ -1333,15 +1343,19 @@ def Factory():
                 Sleep(2)
                 GoBack(1000)
                 GoLeft(6000)
-                GoForward(11300)
+                Sprinting(3)
+                GoForward(500)
+                Sleep(1)
+                # SJump(4)
+                # GoForward(1000)
                 DeviceShell(f"input swipe 800 225 {(800-728/setting._FPS_ADJUSTER)} 225 500")
                 AUTOCalibration_P([800,600])
-                CastSpearRush(4)
+                # Sprinting(4)
+                Liser_Sprinting(0.5)
+                Sleep(2)
                 AUTOCalibration_P()
-                GoForward(6000)
-
-                if not ResetPosition():
-                    return False
+                Sprinting(3)
+                Sleep(1.5)
                 return True
             case "夜航手册50":
                 if CheckIf(ScreenShot(), "保护目标", [[693,212,109,110]]):
@@ -1353,95 +1367,78 @@ def Factory():
                     GoLeft(1800)
                     GoForward(2500)
                     if CheckIf(ScreenShot(), "钩锁", [[1187,301,109,110]]):
-                        GoRight(1300)
-                        GoForward(6000)
-                        GoLeft(1600)
-                        SJump()
-                        Sleep(2)
-                        GoForward(14000)
+                        Zipline()
+                        GoLeft(1000)
+                        SJump(8)
+                        # Sleep(2)
+                        # GoForward(14000)
                         return True
                     else:
-                        GoForward(16500)
+                        GoForward(1000)
+                        GoLeft(400)
+                        SJump(8)
                     # if not ResetPosition():
                     #     return False
                     # GoLeft(15000)
                     return True
                 elif CheckIf(ScreenShot(), "保护目标", [[774,237,109,110]]):
                     GoForward(5500)
-                    GoRight(1600)
-                    GoForward(6000)
-                    GoLeft(1600)
-                    SJump()
-                    Sleep(2)
-                    GoForward(14500)
+                    Zipline()
+                    GoLeft(1000)
+                    SJump(7)
+                    # Sleep(2)
+                    # GoForward(14500)
                     return True
-                elif CheckIf(ScreenShot(), "保护目标", [[1055,488,109,110]]):
+                elif CheckIf(ScreenShot(), "保护目标", [[1186,532,109,110]]):
                     SJump()
-                    Sleep(2.5)
+                    Sleep(1)
                     SJump()
-                    Sleep(1.5)
+                    Sleep(1)
+                    GoRight(1000)
                     GoForward(1000)
-                    GoRight(5500)
+                    Sleep(3)
+                    GoRight(4500)
                     GoForward(1000)
                     GoRight(8000)
                     GoForward(1100)
                     GoRight(15300)
                     GoForward(500)
                     return True
-                    # AUTOCalibration_Y()
-                #     GoForward(5000)
-                #     return True
-                # if CheckIf(ScreenShot(), "保护目标", [[764,217,80,96]]):
-                #     GoForward(5000)
-                #     Sleep(1)
-                #     if CheckIf(ScreenShot(), "保护目标", [[745,175,126,92]]): # 电梯
-                #         GoForward(round((3-4/60)*1000))
-                #         if TryQuickUnlock():
-                #             GoForward(round((18+18/60)*1000))
-                #             return True
-                #         return False
-                #     if CheckIf(ScreenShot(), "保护目标", [[745,266,126,94]]): # 平台
-                #         GoRight(round((1+14/60)*1000))
-                #         GoForward(round((2+42/60)*1000))
-                #         GoLeft(round((2+30/60)*1000))
-                #         GoForward(round((4+42/60)*1000))
-                #         GoRight(round((1+28/60)*1000))
-                #         GoForward(round((15+54/60)*1000))
-                #         return True
-                #     return False
                 return False
             case "夜航手册80":
-                if (setting._FARM_EXTRA == "无关心") or (int(setting._FARM_EXTRA) not in [1,2,3,4,5]) :
-                    logger.info("暂不支持的mod额外参数. 当前仅支持1,2,3,4.")
-                    return False
-                if int(setting._FARM_EXTRA) == 1:
-                    return True
-                if int(setting._FARM_EXTRA) == 2:
-                    return True
-                if int(setting._FARM_EXTRA) == 3:
-                    GoForward(14000)
-                    return True
-                if int(setting._FARM_EXTRA) == 4:
-                    AUTOCalibration_P([800,450])
-                    GoForward(15000)
-                    return True
+                # if (setting._FARM_EXTRA == "无关心") or (int(setting._FARM_EXTRA) not in [1,2,3,4,5]) :
+                #     logger.info("暂不支持的mod额外参数. 当前仅支持1,2,3,4.")
+                #     return False
+                # if int(setting._FARM_EXTRA) == 1:
+                #     return True
+                # if int(setting._FARM_EXTRA) == 2:
+                #     return True
+                # if int(setting._FARM_EXTRA) == 3:
+                #     GoForward(14000)
+                #     return True
+                # if int(setting._FARM_EXTRA) == 4:
+                #     AUTOCalibration_P([800,450])
+                #     GoForward(15000)
+                #     return True
+                return True
             case "夜航手册75":
-                if (setting._FARM_EXTRA == "无关心") or (int(setting._FARM_EXTRA) not in [1,2,3,4,5]) :
-                    logger.info("暂不支持的mod额外参数. 当前仅支持1,2,3,4,5.")
-                    return False
-                if int(setting._FARM_EXTRA) == 1:
-                    return True
-                if int(setting._FARM_EXTRA) == 2:
-                    GoForward(7000)
-                    return True
-                if int(setting._FARM_EXTRA) == 3:
-                    return True
-                if int(setting._FARM_EXTRA) == 4:
-                    CastSpearRush(4)
-                    return True
-                if int(setting._FARM_EXTRA) == 5:
-                    AUTOCalibration_P([800,450])
-                    GoForward(15000)
+                return True
+                # if (setting._FARM_EXTRA == "无关心") or (int(setting._FARM_EXTRA) not in [1,2,3,4,5]) :
+                #     logger.info("暂不支持的mod额外参数. 当前仅支持1,2,3,4,5.")
+                #     return False
+                # if int(setting._FARM_EXTRA) == 1:
+                #     return True
+                # if int(setting._FARM_EXTRA) == 2:
+                #     GoForward(7000)
+                #     return True
+                # if int(setting._FARM_EXTRA) == 3:
+                #     return True
+                # if int(setting._FARM_EXTRA) == 4:
+                #     Sprinting(4)
+                #     return True
+                # if int(setting._FARM_EXTRA) == 5:
+                #     AUTOCalibration_P([800,450])
+                #     GoForward(15000)
             case "角色经验50":
                 if CheckIf(ScreenShot(), "保护目标", [[693,212,109,110]]):
                     GoForward(9600)
@@ -1577,11 +1574,11 @@ def Factory():
             case "mod强化60" | "mod强化60(测试)":
                 def finalRoom():
                     AUTOCalibration_P([800,450])
-                    CastSpearRush(3)
+                    Sprinting(3)
                     for iter in range(10):
                         if CheckIf(ScreenShot(),"护送目标前往撤离点"):
                             if AUTOCalibration_P([800,595]):
-                                CastSpearRush(3,True)
+                                Sprinting(3,True)
                                 GoBack(2000)
                         if iter >= 5:
                             Sleep(1)
@@ -1624,7 +1621,7 @@ def Factory():
                         Sleep(1)
                         if not AUTOCalibration_P([810,418]):
                             return False
-                        CastSpearRush(4)
+                        Sprinting(4)
                         Sleep(1)
                         return finalRoom()
 
@@ -1642,7 +1639,7 @@ def Factory():
                         GoRight(2000)
                         if not AUTOCalibration_P([800,500]):
                             return False
-                        CastSpearRush(5)
+                        Sprinting(5)
                         Sleep(1)
                         return finalRoom()
 
@@ -1662,10 +1659,10 @@ def Factory():
                         logger.info("人质已救出!")
                         if not AUTOCalibration_P([964,561]):
                             return False
-                        CastSpearRush(2)
+                        Sprinting(2)
                         if not AUTOCalibration_P([800,450]):
                             return False
-                        CastSpearRush(2)
+                        Sprinting(2)
                         return finalRoom()
                     
                     logger.info("第四个房间")
@@ -1675,9 +1672,9 @@ def Factory():
                         GoLeft(2300)
                         GoForward(2000)
                         AUTOCalibration_P([800,595])
-                        CastSpearRush(2,True)
+                        Sprinting(2,True)
                         AUTOCalibration_P([800,595])
-                        CastSpearRush(2,True)
+                        Sprinting(2,True)
                         GoBack(500)
                         DeviceShell(f"input swipe {(1528-800)//setting._FPS_ADJUSTER+800} 225 800 225 500")
                         AUTOCalibration_P([730,450])
@@ -1694,44 +1691,44 @@ def Factory():
                             GoRight(2000)
                             if not AUTOCalibration_P([800,450]):
                                     return
-                            CastSpearRush(3)
+                            Sprinting(3)
                             return finalRoom()
 
                     return False
                 ################## 第一个房间
                 if not AUTOCalibration_P([800,595]):
                     return
-                CastSpearRush(4, True)
+                Sprinting(4, True)
                 if not AUTOCalibration_P([800,450]):
                     return
-                CastSpearRush(2)
+                Sprinting(2)
                 Sleep(2)
                 ################## 第二个房间
                 scn = ScreenShot()
                 if CheckIf(scn,"保护目标", [[802-50,480-50,100,100]]):
                     logger.info("正对")
-                    CastSpearRush(2)
+                    Sprinting(2)
                     if not AUTOCalibration_P([800,595]):
                         return
-                    CastSpearRush(3, True)
+                    Sprinting(3, True)
                     GoBack(2000)
                     if not AUTOCalibration_P([800,595]):
                         return
-                    CastSpearRush(2, True)
+                    Sprinting(2, True)
                     Sleep(2)
-                    CastSpearRush(2)
+                    Sprinting(2)
                     
                     return saveVIP()
                 elif CheckIf(scn,"保护目标", [[646-50,377-50,100,100]]):
                     logger.info("左上")
-                    CastSpearRush(2)
+                    Sprinting(2)
                     if not AUTOCalibration_P([800,595]):
                         return
-                    CastSpearRush(4)
+                    Sprinting(4)
                     GoBack(2000)
                     if not AUTOCalibration_P([800,450]):
                         return
-                    CastSpearRush(2)
+                    Sprinting(2)
                     return saveVIP()
                 elif CheckIf(scn,"保护目标", [[1095-50,431-50,100,100]]):
                     DeviceShell(f"input swipe 800 225 {(1107-800)//2+800} 225 500")
@@ -1739,247 +1736,25 @@ def Factory():
                         logger.info("左上")
                         if not AUTOCalibration_P([723,595]):
                             return
-                        CastSpearRush(5, True)
+                        Sprinting(5, True)
                         if not AUTOCalibration_P([800,450]):
                             return
-                        CastSpearRush(3)
+                        Sprinting(3)
                         return saveVIP()
                     else:
                         logger.info("左下")
                         if not AUTOCalibration_P([882,595]):
                             return
-                        CastSpearRush(3)
+                        Sprinting(3)
                         if not AUTOCalibration_P([800,450]):
                             return
-                        CastSpearRush(1)
+                        Sprinting(1)
                         Sleep(1)
-                        CastSpearRush(1)
+                        Sprinting(1)
                         return saveVIP()
 
                 logger.info("不可用的第二个房间.")
                 return False
-            # case "mod强化80":
-            #     map_id = 0
-            #     DeviceShell("input swipe 1000 650 1000 100 200")
-            #     # Sleep(1)
-            #     SJump()
-            #     Sleep(1)
-            #     Liser_Sprinting()
-            #     Sleep(1.3)
-            #     GoBack(250)
-            #     DeviceShell("input swipe 1000 100 1000 550 200")
-            #     Sleep(0.3)
-            #     GoForward(1000)
-            #     Sleep(0.5)
-            #     scn = ScreenShot()
-            #     if CheckIf(scn,"保护目标", [[1016,445,64,180]]):
-            #         map_id = 1
-            #         logger.info(map_id)
-            #         Sprinting(2)
-            #         DeviceShell("input swipe 1000 650 1000 350 200")
-            #         SJump()
-            #         Sleep(0.2)
-            #         Liser_Sprinting()
-            #         DeviceShell("input swipe 1000 350 1000 650 200")
-            #         TRight()
-            #         DeviceShell("input swipe 1000 650 1025 650 200")
-            #         Sleep(0.5)
-            #         Sprinting(1)
-            #         Sleep(0.5)
-            #         Sprinting(3)
-            #         Sleep(0.2)
-            #         TLeft()
-            #         Sleep(0.25)
-            #         DeviceShell("input swipe 1000 650 900 650 200")
-            #         Sleep(0.2)
-            #         GoLeft(1000)
-            #         AUTOCalibration_P([800,350])
-            #         Sleep(0.5)
-            #         # DeviceShell("input swipe 1000 650 1000 350 200")
-            #         # SJump()
-            #         # Sleep(0.2)
-            #         # Liser_Sprinting()
-            #         # GoBack(250)
-            #         # DeviceShell("input swipe 1000 350 1000 650 200")
-            #         Sprinting(5)
-            #         Sleep(0.5)
-            #         scn = ScreenShot()
-            #         if CheckIf(scn,"保护目标", [[1000,405,80,80]]):
-            #             DeviceShell("input swipe 1000 650 1050 650 200")
-            #             Sleep(0.2)
-            #             Sprinting(2)
-            #             Sleep(1)
-            #             # GoForward(750)
-            #             DeviceShell("input swipe 1000 650 1000 600 200")
-            #             Sleep(0.5)
-            #             Sprinting(3)
-            #             Sleep(0.5)
-            #             TRight()
-            #             Sprinting(1)
-            #             Sleep(0.5)
-            #             # TLeft()
-            #             # Sleep(0.2)
-            #             # GoLeft(1500)
-            #         elif CheckIf(scn,"保护目标", [[950,410,80,80]]):
-            #             DeviceShell("input swipe 1000 650 1050 650 200")
-            #             Sleep(0.5)
-            #             Sprinting(3)
-            #             Sleep(0.5)
-            #             GoForward(500)
-            #             DeviceShell("input swipe 1000 650 1000 600 200")
-            #             Sprinting(2)
-            #             Sleep(1)
-            #             TRight()
-            #         # GoForward(1500)
-            #         # Sleep(0.5)
-            #         # Sprinting(3)
-            #         # Sleep(0.5)
-            #         # TRight()
-            #         # Sleep(0.2)
-            #         # AUTOCalibration_P([800,350],tar_s=None,roi=[[900,200,1800,800]])
-            #     elif CheckIf(scn,"保护目标", [[755,400,80,280]]):
-            #         map_id = 2
-            #         logger.info(map_id)
-            #         GoRight(250)
-            #         Sleep(0.2)
-            #         SJump()
-            #         Sleep(0.02)
-            #         Liser_Sprinting()
-            #         Sleep(1.5)
-            #         scn = ScreenShot()
-            #         if CheckIf(scn,"保护目标", [[730,560,64,120]]):
-            #             SJump()
-            #             Sleep(2)
-            #             Sprinting(2)
-            #             Sleep(1.5)
-            #             Sprinting(3)
-            #             Sleep(0.5)
-            #             TRight()
-            #         elif CheckIf(scn,"保护目标", [[852,510,100,180]]):
-            #             Sprinting(2)
-            #             Sleep(0.7)
-            #             GoForward(400)
-            #             Sleep(1)
-            #             Sprinting(2)
-            #             Sleep(0.5)
-            #             GoForward(400)
-            #             Sleep(0.5)
-            #             TRight()
-            #         elif CheckIf(scn,"保护目标", [[670,511,80,80]]):
-            #             GoLeft(1500)
-            #             SJump()
-            #             Sleep(0.02)
-            #             Liser_Sprinting()
-            #             Sleep(1.5)
-            #         elif CheckIf(scn,"保护目标", [[615,485,80,80]]):
-            #             GoLeft(2500)
-            #             Sleep(0.5)
-            #             SJump()
-            #             Sleep(0.02)
-            #             Liser_Sprinting()
-            #             Sleep(1.5)
-            #             scn = ScreenShot()
-            #             if CheckIf(scn,"保护目标", [[690,565,64,180]]):
-            #                 SJump()
-            #                 Sleep(0.2)
-            #                 Sprinting(3)
-            #                 Sleep(0.5)
-            #                 GoForward(1000)
-            #                 Sprinting(2)
-            #                 Sleep(0.5)
-            #                 TRight()
-            #             elif CheckIf(scn,"保护目标", [[470,465,80,80]]):
-            #                 GoLeft(1500)
-            #                 Sleep(0.5)
-            #                 Sprinting(4)
-            #                 Sleep(1)
-            #                 Sprinting(3)
-            #                 Sleep(0.7)
-            #                 TRight()
-            #         # SJump()
-            #         # Sleep(1.5)
-            #         # Sprinting(3)
-            #         # GoLeft(750)
-            #         # GoRight(750)
-            #         # Sprinting(3)
-            #         # TRight()
-            #         # Sprinting(1)
-            #         # GoLeft(1000)
-            #     elif CheckIf(scn,"保护目标", [[1085,422,64,180]]):
-            #         map_id = 3
-            #         logger.info(map_id)
-            #         Sprinting(2)
-            #         Sleep(0.2)
-            #         ResetPosition()
-            #         Sleep(0.5)
-            #         AUTOCalibration_P([800,350])
-            #         Sleep(0.5)
-            #         # logger.info("test")
-            #         Sprinting(6)
-            #         Sleep(1)
-            #         scn = ScreenShot()
-            #         if CheckIf(scn,"保护目标", [[485,485,80,80]]):
-            #             DeviceShell("input swipe 1000 650 900 650 200")
-            #             Sleep(0.2)
-            #             Sprinting(2)
-            #             Sleep(0.5)
-            #             Sprinting(2)
-            #             Sleep(0.5)
-            #             TRight()
-            #         elif CheckIf(scn,"保护目标", [[840,450,80,80]]):
-            #             Sprinting(2)
-            #             Sleep(0.5)
-            #             DeviceShell("input swipe 1000 650 1000 600 200")
-            #             Sleep(1)
-            #             Sprinting(2)
-            #             Sleep(0.5)
-            #             TRight()
-            #         # Sleep(1)
-            #         # Sprinting(3)
-            #         # GoBack(1000)
-            #         # Sleep(1)
-            #         # TRight()
-            #         # Sleep(0.2)
-            #         # AUTOCalibration_P([800,350],tar_s=None,roi=[[900,200,1800,800]])
-            #     elif CheckIf(scn,"保护目标", [[634,350,64,200]]):
-            #         map_id = 4
-            #         logger.info(map_id)
-            #         Sprinting()
-            #         DeviceShell("input swipe 1050 400 950 400 200")
-            #         Sleep(0.3)
-            #         DeviceShell("input swipe 1000 650 1000 350 200")
-            #         SJump()
-            #         Sleep(0.2)
-            #         Liser_Sprinting()
-            #         Sleep(1.5)
-            #         DeviceShell("input swipe 1000 350 1000 650 200")
-            #         Sleep(0.5)
-            #         DeviceShell("input swipe 1000 650 1100 650 200")
-            #         Sleep(0.5)
-            #         GoRight(1100)
-            #         Sprinting(2)
-            #         Sleep(1)
-            #         GoForward(500)
-            #         Sleep(1.2)
-            #         # GoBack(300)
-            #         DeviceShell("input swipe 1000 650 1000 600 200")
-            #         Sleep(0.5)
-            #         # GoLeft(1600)
-            #         # GoRight(1600)
-            #         Sprinting(2)
-            #         Sleep(1)
-            #         TRight()
-            #         Sleep(0.2)
-            #         AUTOCalibration_P([800,350],tar_s=None,roi=[[745,414,250,200]])
-            #         Sleep(1)
-            #         Sprinting(1)
-            #         # Sleep(0.5)
-            #         # Sprinting(1)
-            #     else:
-            #         # Sleep(50)
-            #         return False
-            #     Sleep(500)
-            #     return True
             case "迷津默认难度":
                 logger.info("不对, 你怎么能运行这个??")
                 return True
@@ -2495,24 +2270,69 @@ def Factory():
 
         QuestFarm()
 
-    def select_dungeon(farm_target, lvl):
-        VISIBLE_COUNT = 5
-        total = DUNGEON_TOTAL.get(lvl, VISIBLE_COUNT)
-        if farm_target > total:
-            farm_target = total
-        if farm_target <= VISIBLE_COUNT:
-            screen_index = farm_target
-        else:
-            screen_index = farm_target - (total - VISIBLE_COUNT)
-        x = 1450
-        y = 228 + (screen_index - 1) * 110
-        Press([800, 400])
-        Sleep(0.5)
-        if farm_target > VISIBLE_COUNT:
-            DeviceShell("input swipe 800 555 800 222")
-            Sleep(1)
-        FindCoordsOrElseExecuteFallbackAndWait("确认选择", [x, y], 1)
+    # def select_dungeon(farm_target, lvl):
+    #     VISIBLE_COUNT = 5
+    #     total = DUNGEON_TOTAL.get(lvl, VISIBLE_COUNT)
+    #     if farm_target > total:
+    #         farm_target = total
+    #     if farm_target <= VISIBLE_COUNT:
+    #         screen_index = farm_target
+    #     else:
+    #         screen_index = farm_target - (total - VISIBLE_COUNT)
+    #     x = 1450
+    #     y = 228 + (screen_index - 1) * 110
+    #     Press([800, 400])
+    #     Sleep(0.5)
+    #     # logger.info(f"选择副本: {farm_target}, 等级: {lvl}")
+    #     if farm_target > VISIBLE_COUNT:
+    #         DeviceShell("input swipe 800 555 800 222")
+    #         Sleep(1)
+    #     FindCoordsOrElseExecuteFallbackAndWait("确认选择", [x, y], 1)
 
+    def select_dungeon(farm_target, lvl):
+            VISIBLE_COUNT = 5
+            total = DUNGEON_TOTAL.get(str(lvl), VISIBLE_COUNT)
+            
+            if farm_target > total:
+                farm_target = total
+
+            Press([800, 400])
+            Sleep(0.5)
+
+            if farm_target <= VISIBLE_COUNT:
+                screen_index = farm_target
+            else:
+                BAR_TOP_Y = 179
+                BAR_BOTTOM_Y = 704
+                TRACK_HEIGHT = BAR_BOTTOM_Y - BAR_TOP_Y 
+                
+                thumb_height = int(TRACK_HEIGHT * (VISIBLE_COUNT / total))
+                
+
+                start_center_y = BAR_TOP_Y + (thumb_height // 2)
+                end_center_y = BAR_BOTTOM_Y - (thumb_height // 2)
+
+                valid_center_range = end_center_y - start_center_y
+                
+                scroll_steps_max = total - VISIBLE_COUNT
+                current_step = farm_target - VISIBLE_COUNT
+                scroll_ratio = current_step / scroll_steps_max
+                
+                click_bar_y = int(start_center_y + scroll_ratio * valid_center_range)
+                
+                # 6. 执行点击
+                BAR_X = 1547
+                Press([BAR_X, click_bar_y])
+                Sleep(0.8) 
+                
+
+                screen_index = VISIBLE_COUNT
+
+
+            x = 1450
+            y = 228 + (screen_index - 1) * 110
+            
+            FindCoordsOrElseExecuteFallbackAndWait("确认选择", [x, y], 1)
     def CheckIfWrapper(*args):
         logger.info(args)
         # DIY 写法，len=5
