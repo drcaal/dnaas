@@ -13,22 +13,43 @@ from pathlib import Path
 import numpy as np
 import copy
 import math
+import re
 
 DUNGEON_TARGETS = {
     "角色经验": {"50":5},
     "角色材料": {"10":1, "30":3, "60":6},
     "武器突破": {"60":5, "70":6},
-    "皎皎币":   {"60":3,"70":4},
+    "皎皎币":   {"50":2, "60":3,"70":4},
     "夜航手册": {"30":2, "40":3,"50":4,"55":5, "60":6,"65":7,"70":8,"80":8},
     "魔之楔": {"40":1, "60": 2, "80":3, "100":4},
-    "mod强化": {"60":4, "60(测试)":4},
+    "mod强化": {"60":4, "80":6},
     "开密函": {"驱离":0, "探险无尽":0, "半自动无巧手":0},
     "钓鱼": {"悠闲":0},
     "迷津": {"默认难度":0},
+    "狩月人": {"110":0},
     # "测试": {"测试":0}
     }
 DUNGEON_EXTRA = ["无关心","1","2","3","4","5","6","7","8","9"]
 DUNGEON_TOTAL = {"30":4, "40":5,"50":4,"55":6, "60":8,"65":9,"70":6,"80":5}
+
+ACTION_MAP = {
+    "左": "GoLeft",
+    "右": "GoRight",
+    "前": "GoForward",
+    "后": "GoBack",
+    "飞": "Fly",
+    "大招": "Ultmate",
+    "技能": "Skill",
+    "跳": "Jump",
+    "二段跳": "DoubleJump",
+    "点击": "Press",
+    "识图": "CheckIfWrapper",
+    "复位":"ResetPosition",
+    "开锁":"TryQuickUnlock",
+    "暂停":"Sleep",
+    "穿引":"Sprinting",
+    "飞枪":"Liser_Sprinting"
+    }
 
 ####################################
 CONFIG_VAR_LIST = [
@@ -80,7 +101,7 @@ class RuntimeContext:
     _ROUGE_finish_counter = 0
     _ROUGE_tick_counter = 0
     #### 其他临时参数
-    _MAXRETRYLIMIT = 20
+    _MAXRETRYLIMIT = 100000
     _CASTED_Q = False
     _GAME_PREPARE = False
     _CRASHCOUNTER = 0
@@ -388,7 +409,7 @@ def CutRoI(screenshot,roi):
 ##################################################################
 
 def Factory():
-    global GoForward, GoBack, GoLeft, GoRight, DoubleJump, Press, Fly, Ultmate, Skill
+    global GoForward, GoBack, GoLeft, GoRight, Jump, DoubleJump, Press, Fly, Ultmate, Skill, CheckIfWrapper,ResetPosition,TryQuickUnlock
     toaster = ToastNotifier()
     setting =  None
     quest = None
@@ -777,7 +798,7 @@ def Factory():
                 continue
     ##################################################################
     def ResetPosition():
-        logger.info("开始复位.")
+        # logger.info("开始复位.")
         try:
             FindCoordsOrElseExecuteFallbackAndWait(["放弃挑战","放弃挑战_云","设置"],['indungeon','indungeon_cloud'],1)
             FindCoordsOrElseExecuteFallbackAndWait("其他设置","设置",1)
@@ -792,34 +813,66 @@ def Factory():
         except Exception as e:
             logger.info(e)
             return False
-    def GoLeft(time = 1000):
-        # logger.info(f"往左走 剩余{time}")
-        SPLIT = 3000
-        if time <= SPLIT:
-            DeviceShell(f"input swipe 460 550 50 550 {int(time*41/40)}")
-        else:
-            DeviceShell(f"input swipe 460 550 50 550 {int(SPLIT*41/40)}")
-            GoLeft(time-SPLIT)
-
+    def Jump():
+        Press([1200,500])
     def DoubleJump():
-        Press([1359,478])
+        Press([1200,500])
         Sleep(0.5)
-        Press([1359,478])
+        Press([1200,500])
     def Fly(time=1000):
-        Press([1359,478], long_press_time=time)
+        Press([1200,500], long_press_time=time)
     def Ultmate():
         Press([1205,779])
         Sleep(4)
     def Skill():
         Press([1055,800])
+    def SJump():
+        Press([1350,450])
+    def Sprinting(twice=1):
+        twice = int(twice)
+        for i in range(twice):
+            Press([1350, 650], long_press_time=275)
+            if i != twice - 1:
+                Sleep(0.25)
+    def Shoot():
+        Press([1150,650], long_press_time=250)
+    def Liser_Sprinting():
+        Skill()
+        Sleep(0.3)
+        Sprinting()
+        Sleep(0.05)
+        Shoot()
+        Sleep(0.3)
+    def TRight():
+        DeviceShell("input swipe 1050 400 1450 400 100")
+        Sleep(0.1)
+        DeviceShell("input swipe 1050 400 1450 400 100")
+    def TLeft():
+        DeviceShell("input swipe 1050 400 650 400 100")
+        Sleep(0.1)
+        DeviceShell("input swipe 1050 400 650 400 100")
+    def GoLeft(time = 1000):
+        # logger.info(f"往左走 剩余{time}")
+        SPLIT = 3000
+        if time <= SPLIT:
+            DeviceShell(f"input swipe 360 550 50 550 {int(time*41/40)}")
+        else:
+            DeviceShell(f"input swipe 360 550 50 550 {int(SPLIT*41/40)}")
+            Sleep(1)
+            GoLeft(time-SPLIT)
+        Sleep(0.1)
+        Press([262,767])
     def GoRight(time = 1000):
         # logger.info(f"往右走 剩余{time}")
         SPLIT = 3000
         if time <= SPLIT:
-            DeviceShell(f"input swipe 50 550 560 550 {int(1.02*time)}")
+            DeviceShell(f"input swipe 150 550 560 550 {int(1.02*time)}")
         else:
-            DeviceShell(f"input swipe 50 550 560 550 {int(1.02*SPLIT)}")
+            DeviceShell(f"input swipe 150 550 560 550 {int(1.02*SPLIT)}")
+            Sleep(1)
             GoRight(time-SPLIT)
+        Sleep(0.1)
+        Press([262,767])
     def GoForward(time = 1000):
         # logger.info(f"往前走 剩余{time}")
         SPLIT = 3000
@@ -827,7 +880,10 @@ def Factory():
             DeviceShell(f"input swipe 500 610 500 400 {int(time*21/20)}")
         else:
             DeviceShell(f"input swipe 500 610 500 400 {int(SPLIT*21/20)}")
+            Sleep(1)
             GoForward(time-SPLIT)
+        Sleep(0.1)
+        Press([262,767])
     def GoBack(time = 1000):
         # logger.info(f"往后走 剩余{time}")
         SPLIT = 3000
@@ -835,7 +891,10 @@ def Factory():
             DeviceShell(f"input swipe 500 400 500 710 {int(time*31/30)}")
         else:
             DeviceShell(f"input swipe 500 400 500 710 {int(SPLIT*31/30)}")
+            Sleep(1)
             GoBack(time-SPLIT)
+        Sleep(0.1)
+        Press([262,767])
     def Dodge(time = 1):
         for _ in range(time):
             Press([1500,582])
@@ -902,16 +961,90 @@ def Factory():
                         random.choice([
                             lambda: Press([1203,631]),
                             lambda: Press([1097,658]), 
-                            lambda: DoubleJump()
+                            # lambda: DoubleJump()
                         ])()
                         Sleep(1)
 
                     CastNothingTodo.last_cast_time = time.time()
+    # def CastSpell():
+    #     CastNothingTodo()
+    #     CastQOnce()
+    #     CastESpell()
+    #     CastQSpell()
     def CastSpell():
-        CastNothingTodo()
-        CastQOnce()
-        CastESpell()
-        CastQSpell()
+        now = time.time()
+
+        # 开局只放一次 Q
+        if setting._CAST_Q_ONCE and not runtimeContext._CASTED_Q:
+            Press([1205, 779])
+            Sleep(2)
+            runtimeContext._CASTED_Q = True
+
+        # 初始化静态变量
+        if not hasattr(CastSpell, 'last_cast_time_Q'):
+            CastSpell.last_cast_time_Q = 0
+            CastSpell.last_cast_time_E = 0
+            CastSpell.pending_Q = False
+            CastSpell.pending_E = False
+            CastSpell.last_nothing_time = 0
+            CastSpell.last_skill = None
+
+        # --- 内置CD保护 ---
+        Q_ready = (now - CastSpell.last_cast_time_Q) >= 3  # Q技能内置CD 3秒
+        E_ready = (now - CastSpell.last_cast_time_E) >= 0.5  # E技能内置CD 0.5秒
+
+        # --- 先处理缓存 ---
+        if CastSpell.pending_Q and Q_ready:
+            Press([1205, 779])
+            Sleep(0.5)
+            if CheckIfInDungeon():
+                Press([1203, 631])
+                Sleep(1)
+                Press([1097, 658])
+            CastSpell.last_cast_time_Q = now
+            CastSpell.pending_Q = False
+            CastSpell.last_skill = 'Q'
+            return
+
+        if CastSpell.pending_E and E_ready:
+            Press([1086, 797])
+            CastSpell.last_cast_time_E = now
+            CastSpell.pending_E = False
+            CastSpell.last_skill = 'E'
+            return
+
+        # --- 处理当前读取技能 ---
+        if setting._CAST_Q_ABILITY:
+            if Q_ready and now - CastSpell.last_cast_time_Q >= setting._CAST_Q_INTERVAL:
+                Press([1205, 779])
+                Sleep(0.5)
+                if CheckIfInDungeon():
+                    Press([1203, 631])
+                    Sleep(1)
+                    Press([1097, 658])
+                CastSpell.last_cast_time_Q = now
+                CastSpell.last_skill = 'Q'
+            elif not Q_ready:
+                CastSpell.pending_Q = True
+
+        if setting._CAST_E_ABILITY:
+            if E_ready and now - CastSpell.last_cast_time_E >= setting._CAST_E_INTERVAL:
+                Press([1086, 797])
+                CastSpell.last_cast_time_E = now
+                CastSpell.last_skill = 'E'
+            elif not E_ready:
+                CastSpell.pending_E = True
+
+
+        # --- 未勾选 E/Q 时执行保护动作 ---
+        if not setting._CAST_E_ABILITY and not setting._CAST_Q_ABILITY:
+            if now - CastSpell.last_nothing_time > 20:
+                # logger.info("呃, 什么都不干可不行, 会被踢出去的.")
+                Press([1203,631])
+                Sleep(1)
+                Press([1097,658])
+                CastSpell.last_nothing_time = time.time()
+
     def CastSpearRush(time, attack = False):
         for _ in range(time):
             DeviceShell("input swipe 1336 630 1336 630 500")
@@ -1040,22 +1173,37 @@ def Factory():
                 Sleep(2)
             Press([562,210+(lv-1)*84])
             if setting._FARM_EXTRA == "无关心":
-                farm_target = random.choice([1,2,3,4])
+                farm_target = random.choice([1,2])
             else:
                 farm_target = int(setting._FARM_EXTRA)
             select_dungeon(farm_target,lvl)
-
+        elif setting._FARM_TYPE == "狩月人":
+            Press([1343,844])
     def resetMove():
         if try_diy_action(setting._FARM_TYPE, setting._FARM_LVL, setting._FARM_EXTRA):
             return True
         
         match setting._FARM_TYPE+setting._FARM_LVL:
+            case "狩月人110":
+                SJump()
+                Sleep(1.5)
+                SJump()
+                Sleep(1.5)
+                SJump()
+                Sleep(1)
+                SJump()
+                Sleep(1)
+                SJump()
+                Sleep(1)
+                GoForward(700)
+                Press([1481,776])
+                return True
             case "夜航手册40":
                 return True
             case "夜航手册55" | "夜航手册60":
-                GoForward(15000)
-                GoBack(1000)
-                GoLeft(100)
+                # GoForward(15000)
+                # GoBack(1000)
+                # GoLeft(100)
                 return True
             case "开密函驱离":
                 ResetPosition()
@@ -1142,32 +1290,66 @@ def Factory():
                     GoForward(3000)
                     GoLeft(1800)
                     GoForward(3000)
-                    GoLeft(1550)
-                    GoForward(2000)
-                    if not ResetPosition():
-                        return False
-                    GoForward(10000)
-                    AUTOCalibration_Y()
-                    GoForward(5000)
-                    return True
-                if CheckIf(ScreenShot(), "保护目标", [[764,217,80,96]]):
-                    GoForward(5000)
-                    Sleep(1)
-                    if CheckIf(ScreenShot(), "保护目标", [[745,175,126,92]]): # 电梯
-                        GoForward(round((3-4/60)*1000))
-                        if TryQuickUnlock():
-                            GoForward(round((18+18/60)*1000))
-                            return True
-                        return False
-                    if CheckIf(ScreenShot(), "保护目标", [[745,266,126,94]]): # 平台
-                        GoRight(round((1+14/60)*1000))
-                        GoForward(round((2+42/60)*1000))
-                        GoLeft(round((2+30/60)*1000))
-                        GoForward(round((4+42/60)*1000))
-                        GoRight(round((1+28/60)*1000))
-                        GoForward(round((15+54/60)*1000))
+                    GoLeft(1800)
+                    GoForward(2500)
+                    if CheckIf(ScreenShot(), "钩锁", [[1187,301,109,110]]):
+                        GoRight(1300)
+                        GoForward(6000)
+                        GoLeft(1600)
+                        SJump()
+                        Sleep(2)
+                        GoForward(14000)
                         return True
-                    return False
+                    else:
+                        GoForward(16500)
+                    # if not ResetPosition():
+                    #     return False
+                    # GoLeft(15000)
+                    return True
+                elif CheckIf(ScreenShot(), "保护目标", [[774,237,109,110]]):
+                    GoForward(5500)
+                    GoRight(1600)
+                    GoForward(6000)
+                    GoLeft(1600)
+                    SJump()
+                    Sleep(2)
+                    GoForward(14500)
+                    return True
+                elif CheckIf(ScreenShot(), "保护目标", [[1055,488,109,110]]):
+                    SJump()
+                    Sleep(2.5)
+                    SJump()
+                    Sleep(1.5)
+                    GoForward(1000)
+                    GoRight(5500)
+                    GoForward(1000)
+                    GoRight(8000)
+                    GoForward(1100)
+                    GoRight(15300)
+                    GoForward(500)
+                    return True
+                    # AUTOCalibration_Y()
+                #     GoForward(5000)
+                #     return True
+                # if CheckIf(ScreenShot(), "保护目标", [[764,217,80,96]]):
+                #     GoForward(5000)
+                #     Sleep(1)
+                #     if CheckIf(ScreenShot(), "保护目标", [[745,175,126,92]]): # 电梯
+                #         GoForward(round((3-4/60)*1000))
+                #         if TryQuickUnlock():
+                #             GoForward(round((18+18/60)*1000))
+                #             return True
+                #         return False
+                #     if CheckIf(ScreenShot(), "保护目标", [[745,266,126,94]]): # 平台
+                #         GoRight(round((1+14/60)*1000))
+                #         GoForward(round((2+42/60)*1000))
+                #         GoLeft(round((2+30/60)*1000))
+                #         GoForward(round((4+42/60)*1000))
+                #         GoRight(round((1+28/60)*1000))
+                #         GoForward(round((15+54/60)*1000))
+                #         return True
+                #     return False
+                return False
             case "角色经验50":
                 if CheckIf(ScreenShot(), "保护目标", [[693,212,109,110]]):
                     GoForward(9600)
@@ -1483,6 +1665,228 @@ def Factory():
 
                 logger.info("不可用的第二个房间.")
                 return False
+            # case "mod强化80":
+            #     map_id = 0
+            #     DeviceShell("input swipe 1000 650 1000 100 200")
+            #     # Sleep(1)
+            #     SJump()
+            #     Sleep(1)
+            #     Liser_Sprinting()
+            #     Sleep(1.3)
+            #     GoBack(250)
+            #     DeviceShell("input swipe 1000 100 1000 550 200")
+            #     Sleep(0.3)
+            #     GoForward(1000)
+            #     Sleep(0.5)
+            #     scn = ScreenShot()
+            #     if CheckIf(scn,"保护目标", [[1016,445,64,180]]):
+            #         map_id = 1
+            #         logger.info(map_id)
+            #         Sprinting(2)
+            #         DeviceShell("input swipe 1000 650 1000 350 200")
+            #         SJump()
+            #         Sleep(0.2)
+            #         Liser_Sprinting()
+            #         DeviceShell("input swipe 1000 350 1000 650 200")
+            #         TRight()
+            #         DeviceShell("input swipe 1000 650 1025 650 200")
+            #         Sleep(0.5)
+            #         Sprinting(1)
+            #         Sleep(0.5)
+            #         Sprinting(3)
+            #         Sleep(0.2)
+            #         TLeft()
+            #         Sleep(0.25)
+            #         DeviceShell("input swipe 1000 650 900 650 200")
+            #         Sleep(0.2)
+            #         GoLeft(1000)
+            #         AUTOCalibration_P([800,350])
+            #         Sleep(0.5)
+            #         # DeviceShell("input swipe 1000 650 1000 350 200")
+            #         # SJump()
+            #         # Sleep(0.2)
+            #         # Liser_Sprinting()
+            #         # GoBack(250)
+            #         # DeviceShell("input swipe 1000 350 1000 650 200")
+            #         Sprinting(5)
+            #         Sleep(0.5)
+            #         scn = ScreenShot()
+            #         if CheckIf(scn,"保护目标", [[1000,405,80,80]]):
+            #             DeviceShell("input swipe 1000 650 1050 650 200")
+            #             Sleep(0.2)
+            #             Sprinting(2)
+            #             Sleep(1)
+            #             # GoForward(750)
+            #             DeviceShell("input swipe 1000 650 1000 600 200")
+            #             Sleep(0.5)
+            #             Sprinting(3)
+            #             Sleep(0.5)
+            #             TRight()
+            #             Sprinting(1)
+            #             Sleep(0.5)
+            #             # TLeft()
+            #             # Sleep(0.2)
+            #             # GoLeft(1500)
+            #         elif CheckIf(scn,"保护目标", [[950,410,80,80]]):
+            #             DeviceShell("input swipe 1000 650 1050 650 200")
+            #             Sleep(0.5)
+            #             Sprinting(3)
+            #             Sleep(0.5)
+            #             GoForward(500)
+            #             DeviceShell("input swipe 1000 650 1000 600 200")
+            #             Sprinting(2)
+            #             Sleep(1)
+            #             TRight()
+            #         # GoForward(1500)
+            #         # Sleep(0.5)
+            #         # Sprinting(3)
+            #         # Sleep(0.5)
+            #         # TRight()
+            #         # Sleep(0.2)
+            #         # AUTOCalibration_P([800,350],tar_s=None,roi=[[900,200,1800,800]])
+            #     elif CheckIf(scn,"保护目标", [[755,400,80,280]]):
+            #         map_id = 2
+            #         logger.info(map_id)
+            #         GoRight(250)
+            #         Sleep(0.2)
+            #         SJump()
+            #         Sleep(0.02)
+            #         Liser_Sprinting()
+            #         Sleep(1.5)
+            #         scn = ScreenShot()
+            #         if CheckIf(scn,"保护目标", [[730,560,64,120]]):
+            #             SJump()
+            #             Sleep(2)
+            #             Sprinting(2)
+            #             Sleep(1.5)
+            #             Sprinting(3)
+            #             Sleep(0.5)
+            #             TRight()
+            #         elif CheckIf(scn,"保护目标", [[852,510,100,180]]):
+            #             Sprinting(2)
+            #             Sleep(0.7)
+            #             GoForward(400)
+            #             Sleep(1)
+            #             Sprinting(2)
+            #             Sleep(0.5)
+            #             GoForward(400)
+            #             Sleep(0.5)
+            #             TRight()
+            #         elif CheckIf(scn,"保护目标", [[670,511,80,80]]):
+            #             GoLeft(1500)
+            #             SJump()
+            #             Sleep(0.02)
+            #             Liser_Sprinting()
+            #             Sleep(1.5)
+            #         elif CheckIf(scn,"保护目标", [[615,485,80,80]]):
+            #             GoLeft(2500)
+            #             Sleep(0.5)
+            #             SJump()
+            #             Sleep(0.02)
+            #             Liser_Sprinting()
+            #             Sleep(1.5)
+            #             scn = ScreenShot()
+            #             if CheckIf(scn,"保护目标", [[690,565,64,180]]):
+            #                 SJump()
+            #                 Sleep(0.2)
+            #                 Sprinting(3)
+            #                 Sleep(0.5)
+            #                 GoForward(1000)
+            #                 Sprinting(2)
+            #                 Sleep(0.5)
+            #                 TRight()
+            #             elif CheckIf(scn,"保护目标", [[470,465,80,80]]):
+            #                 GoLeft(1500)
+            #                 Sleep(0.5)
+            #                 Sprinting(4)
+            #                 Sleep(1)
+            #                 Sprinting(3)
+            #                 Sleep(0.7)
+            #                 TRight()
+            #         # SJump()
+            #         # Sleep(1.5)
+            #         # Sprinting(3)
+            #         # GoLeft(750)
+            #         # GoRight(750)
+            #         # Sprinting(3)
+            #         # TRight()
+            #         # Sprinting(1)
+            #         # GoLeft(1000)
+            #     elif CheckIf(scn,"保护目标", [[1085,422,64,180]]):
+            #         map_id = 3
+            #         logger.info(map_id)
+            #         Sprinting(2)
+            #         Sleep(0.2)
+            #         ResetPosition()
+            #         Sleep(0.5)
+            #         AUTOCalibration_P([800,350])
+            #         Sleep(0.5)
+            #         # logger.info("test")
+            #         Sprinting(6)
+            #         Sleep(1)
+            #         scn = ScreenShot()
+            #         if CheckIf(scn,"保护目标", [[485,485,80,80]]):
+            #             DeviceShell("input swipe 1000 650 900 650 200")
+            #             Sleep(0.2)
+            #             Sprinting(2)
+            #             Sleep(0.5)
+            #             Sprinting(2)
+            #             Sleep(0.5)
+            #             TRight()
+            #         elif CheckIf(scn,"保护目标", [[840,450,80,80]]):
+            #             Sprinting(2)
+            #             Sleep(0.5)
+            #             DeviceShell("input swipe 1000 650 1000 600 200")
+            #             Sleep(1)
+            #             Sprinting(2)
+            #             Sleep(0.5)
+            #             TRight()
+            #         # Sleep(1)
+            #         # Sprinting(3)
+            #         # GoBack(1000)
+            #         # Sleep(1)
+            #         # TRight()
+            #         # Sleep(0.2)
+            #         # AUTOCalibration_P([800,350],tar_s=None,roi=[[900,200,1800,800]])
+            #     elif CheckIf(scn,"保护目标", [[634,350,64,200]]):
+            #         map_id = 4
+            #         logger.info(map_id)
+            #         Sprinting()
+            #         DeviceShell("input swipe 1050 400 950 400 200")
+            #         Sleep(0.3)
+            #         DeviceShell("input swipe 1000 650 1000 350 200")
+            #         SJump()
+            #         Sleep(0.2)
+            #         Liser_Sprinting()
+            #         Sleep(1.5)
+            #         DeviceShell("input swipe 1000 350 1000 650 200")
+            #         Sleep(0.5)
+            #         DeviceShell("input swipe 1000 650 1100 650 200")
+            #         Sleep(0.5)
+            #         GoRight(1100)
+            #         Sprinting(2)
+            #         Sleep(1)
+            #         GoForward(500)
+            #         Sleep(1.2)
+            #         # GoBack(300)
+            #         DeviceShell("input swipe 1000 650 1000 600 200")
+            #         Sleep(0.5)
+            #         # GoLeft(1600)
+            #         # GoRight(1600)
+            #         Sprinting(2)
+            #         Sleep(1)
+            #         TRight()
+            #         Sleep(0.2)
+            #         AUTOCalibration_P([800,350],tar_s=None,roi=[[745,414,250,200]])
+            #         Sleep(1)
+            #         Sprinting(1)
+            #         # Sleep(0.5)
+            #         # Sprinting(1)
+            #     else:
+            #         # Sleep(50)
+            #         return False
+            #     Sleep(500)
+            #     return True
             case "迷津默认难度":
                 logger.info("不对, 你怎么能运行这个??")
                 return True
@@ -1705,7 +2109,7 @@ def Factory():
         @register()
         def handle_continue(scn):
             nonlocal runtimeContext
-            if pos:=(CheckIf(scn, "再次进行")):
+            if (pos := CheckIf(scn, "再次进行")) or (pos := CheckIf(scn, "重新开始")):
                 Press(pos)
                 runtimeContext._CASTED_Q = False
                 cost_time = time.time()-runtimeContext._START_TIME
@@ -1713,11 +2117,28 @@ def Factory():
                     runtimeContext._GAME_COUNTER += 1
                     runtimeContext._GAME_PREPARE = False
                     runtimeContext._TOTAL_TIME = runtimeContext._TOTAL_TIME + cost_time
-                    logger.info(f"本轮用时{cost_time:.2f}秒.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒.")
+                    # logger.info(f"本轮用时{cost_time:.2f}秒.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒.")
+                    logger.info(f"本轮用时{cost_time:.2f}秒.")
                     logger.info(f"第{runtimeContext._GAME_COUNTER}次{setting._FARM_TYPE+setting._FARM_LVL}完成.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒.", extra={"summary": True})
                     runtimeContext._START_TIME = time.time()
                 return True
             return False
+        # @register()
+        # def handle_continue_rank(scn):
+        #     nonlocal runtimeContext
+        #     if pos:=(CheckIf(scn, "重新开始")):
+        #         Press(pos)
+        #         runtimeContext._CASTED_Q = False
+        #         cost_time = time.time()-runtimeContext._START_TIME
+        #         if cost_time > 10:
+        #             runtimeContext._GAME_COUNTER += 1
+        #             runtimeContext._GAME_PREPARE = False
+        #             runtimeContext._TOTAL_TIME = runtimeContext._TOTAL_TIME + cost_time
+        #             logger.info(f"本轮用时{cost_time:.2f}秒.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒.")
+        #             logger.info(f"第{runtimeContext._GAME_COUNTER}次{setting._FARM_TYPE+setting._FARM_LVL}完成.\n累计用时{runtimeContext._TOTAL_TIME:.2f}秒.", extra={"summary": True})
+        #             runtimeContext._START_TIME = time.time()
+        #         return True
+        #     return False
         @register('normal')
         def handle_in_dungeon(scn):
             nonlocal runtimeContext
@@ -1913,13 +2334,15 @@ def Factory():
                 logger.debug(f"round time {round_time}")
 
             if check_counter < 5:
-                logger.debug(f"定位中, 尝试次数:{check_counter}/20")
-            if check_counter >= 5:
-                logger.info(f"定位中, 尝试次数:{check_counter}/20")
+                # logger.debug(f"定位中, 尝试次数:{check_counter}/100000")
+                pass
+            if check_counter >= 1000:
+                logger.info(f"定位中, 尝试次数:{check_counter}/100000")
                 if ("dna" not in DeviceShell("dumpsys window | grep mCurrentFocus")) and ("duetnightabyss" not in DeviceShell("dumpsys window | grep mCurrentFocus")) :
                     logger.info("游戏未启动, 尝试启动.")
                     try:
-                        restartGame(skipScreenShot = True)
+                        Sleep(3600)
+                        # restartGame(skipScreenShot = True)
                         Press([1,1])
                     except RestartSignal:
                         pass
@@ -1968,59 +2391,114 @@ def Factory():
             Sleep(1)
         FindCoordsOrElseExecuteFallbackAndWait("确认选择", [x, y], 1)
 
-    def try_diy_action(farm_type, farm_lvl, extra_target):
-        ACTION_MAP = {
-            "左": "GoLeft",
-            "右": "GoRight",
-            "前": "GoForward",
-            "后": "GoBack",
-            "飞": "Fly",
-            "大招": "Ultmate",
-            "技能": "Skill",
-            "二段跳": "DoubleJump",
-            "点击": "Press",
-        }
-        def strip_comment(line: str):
+    def CheckIfWrapper(*args):
+        logger.info(args)
+        # DIY 写法，len=5
+        if len(args) == 5:
+            img_name, x1, y1, x2, y2 = args
+            # 如果用户没加引号，强制转为字符串
+            if not isinstance(img_name, str):
+                img_name = str(img_name)
+            # 坐标转换成 [x起点, y起点, x偏移, y偏移]
+            roi_converted = [[x1, y1, x2 - x1, y2 - y1]]
+            return CheckIf(ScreenShot(), img_name, roi_converted)
+        # 原始 CheckIf 写法，len=3
+        elif len(args) == 3:
+            return CheckIf(*args)
+        else:
+            raise ValueError(f"CheckIfWrapper 参数错误: {args}")
+
+    def strip_comment(line: str):
             for mark in ("#", "//", ";"):
                 if mark in line:
                     line = line.split(mark, 1)[0]
             return line.strip()
 
-        def normalize_cmd(line: str):
+    def normalize_cmd(line: str):
+            line = re.sub(r'^(CheckIfWrapper|识图)\(\s*([^\d"\'\s][^,]*)', r'\1("\2"', line)
             if "(" not in line:
                 return line + "()"
             return line.replace("( )", "()")
-        
-        if extra_target == "无关心":
+
+    def try_diy_action(farm_type, farm_lvl, extra_target):
+
+        diy_folder = os.path.join("diy", farm_type)
+        if not os.path.exists(diy_folder):  
             return False
+        file_list = []
 
-        file_name = f"{farm_lvl}-{extra_target}.txt"
-        file_path = os.path.join("diy", farm_type, file_name)
+        if farm_type == "夜航手册":
+            if extra_target == "无关心":
+                return False
 
-        if not os.path.exists(file_path):
+            file_path = os.path.join(diy_folder, f"{farm_lvl}-{extra_target}.txt")
+            if os.path.exists(file_path):
+                file_list.append((file_path))
+            else:
+                return False
+        elif farm_type in ("角色材料", "开密函", "皎皎币"):
+            files = sorted([f for f in os.listdir(diy_folder)
+                            if f.startswith(f"{farm_lvl}-") and f.endswith(".txt")])
+            for f in files:
+                file_list.append(os.path.join(diy_folder, f))
+
+            if not file_list:
+                return False
+        else:
             return False
-        logger.info(f"执行 DIY 副本: {file_name}")
-        with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-
-        for raw_line in lines:
-            line = strip_comment(raw_line)
-            if not line:
-                continue
-
-            # 中文命令 → 函数名
-            for key, func_name in ACTION_MAP.items():
-                if line.startswith(key):
-                    line = line.replace(key, func_name, 1)
-                    break
-
-            line = normalize_cmd(line)
-
-            try:
-                exec(line, globals(), locals())
-            except Exception as e:
-                print(f"[DIY] 执行失败: {line}, 错误: {e}")
-        
-        return True
+        return execute_diy_file(file_list)
     
+    def execute_diy_file(file_list, max_check_attempts=1):
+        for file_path in file_list:
+            logger.info(f"执行 DIY 副本: {file_path}")
+
+            with open(file_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            has_check = False
+            check_success = False
+            for raw_line in lines:
+                line = strip_comment(raw_line)
+                if not line:
+                    continue
+
+                line = normalize_cmd(line)
+
+                for key, func_name in ACTION_MAP.items():
+                    if line.startswith(key):
+                        line = line.replace(key, func_name, 1)
+                        break
+                try:
+                    if line.startswith("CheckIf"):
+                        # logger.info("TEST!")
+        
+                        # Sleep(10)
+                        # logger.info(line)
+                        has_check = True
+                        attempt = 0
+                        while attempt < max_check_attempts:
+                            result = eval(line, globals(), locals())
+                            attempt += 1
+                            if result:
+                                logger.info(f"[DIY] 识图成功 (尝试 {attempt})")
+                                check_success = True
+                                break
+                            else:
+                                logger.info(f"[DIY] 识图失败，重试 {attempt}/{max_check_attempts}")
+                                Sleep(1)
+                        if not check_success:
+                            logger.info("[DIY] 识图多次失败，尝试下一个文件")
+                            break 
+                    else:
+                        eval(line, globals(), locals())
+                except Exception as e:
+                    logger.error(f"[DIY] 执行失败: {line}, 错误: {e}")
+                    break  # 当前文件失败，尝试下一个
+
+            if check_success or not has_check:
+                return True
+
+        # 全部文件执行失败
+        return False
+
     return Farm

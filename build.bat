@@ -1,7 +1,7 @@
 @echo OFF
 setlocal
 
-set "ANACONDA_PATH=C:\P\Anaconda"
+set "ANACONDA_PATH=E:\Program Files\dna\dnaas"
 
 :: 清理旧文件
 echo [INFO] 正在清理旧构建文件...
